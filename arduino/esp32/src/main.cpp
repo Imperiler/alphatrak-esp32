@@ -10,9 +10,6 @@
 #include "ApiClient.h"
 #include "HTTPClient.h"
 #include "ArduinoJson.h"
-#include "TinyGsmClient.h"
-#include "TinyGSM.h"
-#include "TinyGsmClientSIM7000.h"
 
 const char* ssid = "CrimsonProjectile";
 const char* password = "Fuzzynana692692";
@@ -33,10 +30,9 @@ void setup()
 {
     Serial.begin(115200);                            // initialize serial console
     delay(7000);                                     // give serial console time to init
-
     Serial.println("running setup");                 // inform running setup
 
-    // get and set settings
+    // get and set preferences
     EEPROM.begin(EEPROM_SIZE);                       //initialize eeprom
     if (EEPROM.read(0) == NAN) {
         TIME_TO_SLEEP = DEFAULT_TIME_TO_SLEEP;
@@ -46,9 +42,9 @@ void setup()
         TIME_TO_SLEEP = EEPROM.read(0);
       }
 
-    setupWifi();
+    // setupWifi();
     delay(6000);
-    // setupModem();
+    setupModem();
     Serial.println("Setup done");
 }
 
@@ -57,7 +53,7 @@ void loop()
 {
 
 
-
+    scanGSM();
     // consruct json to send to server
     DynamicJsonDocument doc(1024);                   // initialize json doc
     JsonObject transmitData = doc.to<JsonObject>();  // make doc into JSON object

@@ -5,6 +5,8 @@
 
 void setupWifi();
 void setupModem();
+void modemPowerOff();
+void modemPowerOn();
 extern ArduinoJson::JsonObject scanWifi();
 extern ArduinoJson::JsonObject scanGSM();
 
