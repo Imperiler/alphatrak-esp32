@@ -1,32 +1,51 @@
+#include "Main.h"
 #include "ApiClient.h"
 #include "WiFi.h"
-#include "HTTPClient.h"
+#include "TinyGsmClient.h"
+#include <ArduinoHttpClient.h>
 
-const char* serverName = "http://192.168.5.29:8000/api/transmission/";
+const char server[] = "7b2f9d63a2f5.ngrok.io";
+const int port = 80;
+
 
 
 int postData(String requestBody)
-{
-//Check WiFi connection status
-      if(WiFi.status()== WL_CONNECTED){
-      WiFiClient client;
-      HTTPClient http;
-    
-      // Your Domain name with URL path or IP address with path
-      http.begin(client, serverName);
-
-      // Specify content-type header
-      http.addHeader("Content-Type", "application/json");
-
-      // Data to send with HTTP POST
-      // Send HTTP POST request
-      int httpResponseCode = http.POST(requestBody);
-        
-      // Free resources
-      http.end();
-      return (httpResponseCode);
+{        
+    HttpClient http(client, server, port);
+    Serial.println("----------------------SUBMITTING REQUEST-------------------");
+   
+    //Check WiFi connection status
+    if (!modem.isGprsConnected()) { 
+        SerialMon.println("NOT GPRS connected");
+        modem.gprsConnect(apn);
     }
+
+    // http.connect();
+    client.connect(server,port);
+
+    if (client.connect(server, port)) {
+        Serial.println("connected");
+        http.beginRequest();
+        http.post("/api/transmission/");
+        http.sendHeader("Content-Type", "application/json");
+        http.sendHeader("Content-Length", requestBody.length());
+        http.beginBody();
+        http.print(requestBody);
+        http.endRequest();
+
+        // String contentType = ("application/json");
+        // Serial.print("request looks like this: ");
+        // Serial.println(requestBody);
+
+        // read the status code and body of the response
+        int statusCode = http.responseStatusCode();
+        String response = http.responseBody();
+        Serial.println(response);
+        http.stop();
+        return (statusCode);
+    }
+
     else {
-      Serial.println("WiFi Disconnected");
+            Serial.println("I'm in danger lol");
     }
 }

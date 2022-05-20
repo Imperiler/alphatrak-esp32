@@ -1,85 +1,9 @@
-#define SerialMon Serial  // set debug console to serial monitor
-#define SerialAT Serial1  // set serial at commands to sim module
-
-#define TINY_GSM_MODEM_SIM7000
-#define TINY_GSM_RX_BUFFER 1024 // Set RX buffer to 1Kb
-// #define TINY_GSM_DEBUG SerialMon
-#define SerialAT Serial1  // set serial at commands to sim module
-
-#define GSM_PIN ""
-
-const char apn[] = "fast.t-mobile.com";
-
-
+#include "Main.h"
+#include "Utils.h"
 #include "TinyGsmClient.h"
 #include "NetworkScanner.h"
 #include "WiFi.h"
 #include <ArduinoHttpClient.h>
-
-#ifdef DUMP_AT_COMMANDS
-#include <StreamDebugger.h>
-StreamDebugger debugger(SerialAT, SerialMon);
-TinyGsm modem(debugger);
-#else
-TinyGsm modem(SerialAT);
-#endif
-
-#define UART_BAUD           9600
-#define PIN_DTR             25
-#define PIN_TX              27
-#define PIN_RX              26
-#define PWR_PIN             4
-
-#define SD_MISO             2
-#define SD_MOSI             15
-#define SD_SCLK             14
-#define SD_CS               13
-#define LED_PIN             12
-
-
-
-
-const int  port = 443;
-const char server[]   = "gorest.co.in";
-const char resource[] = "/public/v2/users/100";
-
-TinyGsmClient client(modem);
-// HttpClient    http(client, server, port);
-
-
-void setupWifi()
-{
-    // Set WiFi to station mode and disconnect from an AP if it was previously connected
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    delay(100);
-}
-
-
-void modemPowerOn()
-{
-  pinMode(PWR_PIN, OUTPUT);
-  digitalWrite(PWR_PIN, LOW);
-  delay(1000); //Datasheet Ton mintues = 1S
-  digitalWrite(PWR_PIN, HIGH);
-}
-
-void modemPowerOff()
-{
-  pinMode(PWR_PIN, OUTPUT);
-  digitalWrite(PWR_PIN, LOW);
-  delay(1500); //Datasheet Ton mintues = 1.2S
-  digitalWrite(PWR_PIN, HIGH);
-}
-
-
-void modemRestart()
-{
-    modemPowerOff();
-    delay(1000);
-    modemPowerOn();
-}
-
 
 void setupModem()
 {
@@ -179,9 +103,6 @@ void setupModem()
     Serial.println();
 
 
-
-
-
     Serial.println("=====Inquiring UE system information=====");
     modem.sendAT("+CPSI?");
     if (modem.waitResponse(1000L, res) == 1) {
@@ -191,8 +112,10 @@ void setupModem()
 
 }
 
+
 ArduinoJson::JsonObject scanWifi()
 {
+    setupWifi();
     DynamicJsonDocument doc(1024);
     DynamicJsonDocument wifiDoc(1024);
 
@@ -201,37 +124,34 @@ ArduinoJson::JsonObject scanWifi()
     // WiFi.scanNetworks will return the number of networks found
     int n = WiFi.scanNetworks();
     Serial.println("scan done");
+    // serialize network info
+    ArduinoJson::JsonObject scanObject = wifiDoc.to<JsonObject>();
+    ArduinoJson::JsonArray scanArray = doc.to<JsonArray>();    
+
     if (n == 0) {  // if no networks found, inform
         Serial.println("no networks found");
+        return(scanObject);
     } 
     else {  
         Serial.print(n);
         Serial.println(" networks found");
-               
-        
-        // serialize network info
-        ArduinoJson::JsonObject scanObject = wifiDoc.to<JsonObject>();
-        ArduinoJson::JsonArray scanArray = doc.to<JsonArray>();
-        ArduinoJson::JsonObject wifi_network = scanArray.createNestedObject();
-
+    
 
         for (int i = 0; i < n; ++i) {
-            // wifi_network["ssid"] = (WiFi.SSID(i));
             StaticJsonDocument<400> objectDoc;
 
-            // ArduinoJson::JsonArray networks = wifi_network.createNestedArray();
             ArduinoJson::JsonObject networkObjct = objectDoc.to<JsonObject>();
 
             networkObjct["ssid"] = (WiFi.SSID(i));
-            networkObjct["mac"] = WiFi.BSSIDstr(i);
+            networkObjct["macAddress"] = WiFi.BSSIDstr(i);
+            networkObjct["signalStrength"] = WiFi.RSSI(i);
             networkObjct["channel"] = WiFi.channel(i);
-            networkObjct["strength"] = WiFi.RSSI(i);
-            scanArray.add(networkObjct);
 
-            scanObject["wifi_networks"] = scanArray;
-            delay(10);
+
+            scanArray.add(networkObjct);
         }
-        return(scanObject);
+    scanObject["wifi_networks"] = scanArray;
+    return(scanObject);
     }
 }
 
@@ -273,49 +193,4 @@ ArduinoJson::JsonObject scanGSM()
       delay(15000L);
     }
   }
-
-
-
-
-
-
-
-
-
-
-
-    // WiFi.scanNetworks will return the number of networks found
-    int n = WiFi.scanNetworks();
-    Serial.println("scan done");
-    if (n == 0) {  // if no networks found, inform
-        Serial.println("no networks found");
-    } 
-    else {  
-        Serial.print(n);
-        Serial.println(" networks found");
-               
-        
-        // serialize network info
-        ArduinoJson::JsonObject scanObject = gsmDoc.to<JsonObject>();
-        ArduinoJson::JsonArray scanArray = doc.to<JsonArray>();
-        ArduinoJson::JsonObject wifi_network = scanArray.createNestedObject();
-
-        for (int i = 0; i < n; ++i) {
-            // wifi_network["ssid"] = (WiFi.SSID(i));
-            StaticJsonDocument<400> objectDoc;
-
-            // ArduinoJson::JsonArray networks = wifi_network.createNestedArray();
-            ArduinoJson::JsonObject networkObjct = objectDoc.to<JsonObject>();
-
-            networkObjct["ssid"] = (WiFi.SSID(i));
-            networkObjct["mac"] = WiFi.BSSIDstr(i);
-            networkObjct["channel"] = WiFi.channel(i);
-            networkObjct["strength"] = WiFi.RSSI(i);
-            scanArray.add(networkObjct);
-
-            scanObject["wifi_networks"] = scanArray;
-            delay(10);
-        }
-        return(scanObject);
-    }
 }

@@ -3,10 +3,12 @@
 
 #include "ArduinoJson.h"
 
-void setupWifi();
+
+// extern char apn;
+extern TinyGsm modem;
+extern TinyGsmClient client;
+extern const char apn[];
 void setupModem();
-void modemPowerOff();
-void modemPowerOn();
 extern ArduinoJson::JsonObject scanWifi();
 extern ArduinoJson::JsonObject scanGSM();
 
