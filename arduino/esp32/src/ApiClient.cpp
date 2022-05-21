@@ -1,41 +1,30 @@
 #include "Main.h"
 #include "ApiClient.h"
-#include "WiFi.h"
 #include "TinyGsmClient.h"
 #include <ArduinoHttpClient.h>
-
-const char server[] = "7b2f9d63a2f5.ngrok.io";
-const int port = 80;
-
+#include "Utils.h"
+#include "ModemUtils.h"
 
 
 int postData(String requestBody)
 {        
     HttpClient http(client, server, port);
     Serial.println("----------------------SUBMITTING REQUEST-------------------");
-   
-    //Check WiFi connection status
-    if (!modem.isGprsConnected()) { 
-        SerialMon.println("NOT GPRS connected");
-        modem.gprsConnect(apn);
-    }
+    ensureModemGprsConnected();
 
-    // http.connect();
     client.connect(server,port);
 
     if (client.connect(server, port)) {
-        Serial.println("connected");
-        http.beginRequest();
-        http.post("/api/transmission/");
+        Serial.println("connected to server");
+        http.beginRequest();                                            // start transmission
+        http.post(resource);                                            // specify server location to post to
+        // send headers
         http.sendHeader("Content-Type", "application/json");
         http.sendHeader("Content-Length", requestBody.length());
         http.beginBody();
+        // send body
         http.print(requestBody);
         http.endRequest();
-
-        // String contentType = ("application/json");
-        // Serial.print("request looks like this: ");
-        // Serial.println(requestBody);
 
         // read the status code and body of the response
         int statusCode = http.responseStatusCode();
@@ -46,6 +35,6 @@ int postData(String requestBody)
     }
 
     else {
-            Serial.println("I'm in danger lol");
+            Serial.println("I'm in danger lol server not connected");
     }
 }
