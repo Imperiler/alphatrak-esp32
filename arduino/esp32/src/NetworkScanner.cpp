@@ -1,116 +1,11 @@
 #include "Main.h"
 #include "Utils.h"
+#include "ModemUtils.h"
 #include "TinyGsmClient.h"
 #include "NetworkScanner.h"
 #include "WiFi.h"
 #include <ArduinoHttpClient.h>
 
-void setupModem()
-{
-    delay(10);
-
-    // Set LED OFF
-    pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH);
-
-    modemPowerOn();
-
-    SerialAT.begin(UART_BAUD, SERIAL_8N1, PIN_RX, PIN_TX);
-
-    String res;
-
-    while (!modem.init()) {
-        modemRestart();
-        delay(2000);
-        Serial.println("Failed to restart modem, waiting for restart to finish");
-    }
-
-    Serial.println("========SIMCOMATI======");
-    modem.sendAT("+SIMCOMATI");
-    modem.waitResponse(1000L, res);
-    res.replace(GSM_NL "OK" GSM_NL, "");
-    Serial.println(res);
-    res = "";
-    Serial.println("=======================");
-
-    Serial.println("=====Preferred mode selection=====");
-    modem.sendAT("+CNMP?");
-    if (modem.waitResponse(1000L, res) == 1) {
-        res.replace(GSM_NL "OK" GSM_NL, "");
-        Serial.println(res);
-    }
-    res = "";
-    Serial.println("=======================");
-
-
-    Serial.println("=====Preferred selection between CAT-M and NB-IoT=====");
-    modem.sendAT("+CMNB?");
-    if (modem.waitResponse(1000L, res) == 1) {
-        res.replace(GSM_NL "OK" GSM_NL, "");
-        Serial.println(res);
-    }
-    res = "";
-    Serial.println("=======================");
-
-
-    String name = modem.getModemName();
-    Serial.println("Modem Name: " + name);
-
-    String modemInfo = modem.getModemInfo();
-    Serial.println("Modem Info: " + modemInfo);
-
-    // Unlock SIM card with a PIN if needed
-    if ( GSM_PIN && modem.getSimStatus() != 3 ) {
-        modem.simUnlock(GSM_PIN);
-    }
-
-
-    for (int i = 0; i <= 4; i++) {
-        uint8_t network[] = {
-            2,  /*Automatic*/
-            13, /*GSM only*/
-            38, /*LTE only*/
-            51  /*GSM and LTE only*/
-        };
-        Serial.printf("Try %d method\n", network[i]);
-        modem.setNetworkMode(network[i]);
-        delay(3000);
-        bool isConnected = false;
-        int tryCount = 60;
-        while (tryCount--) {
-            int16_t signal =  modem.getSignalQuality();
-            Serial.print("Signal: ");
-            Serial.print(signal);
-            Serial.print(" ");
-            Serial.print("isNetworkConnected: ");
-            isConnected = modem.isNetworkConnected();
-            Serial.println( isConnected ? "CONNECT" : "NO CONNECT");
-            if (isConnected) {
-                break;
-            }
-            delay(1000);
-            digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-        }
-        if (isConnected) {
-            break;
-        }
-    }
-    // Turn on LED when connected
-    digitalWrite(LED_PIN, HIGH);
-
-    Serial.println();
-    Serial.println("Device is connected .");
-    Serial.println();
-
-
-    Serial.println("=====Inquiring UE system information=====");
-    modem.sendAT("+CPSI?");
-    if (modem.waitResponse(1000L, res) == 1) {
-        res.replace(GSM_NL "OK" GSM_NL, "");
-        Serial.println(res);
-    }
-
-}
 
 
 ArduinoJson::JsonObject scanWifi()
@@ -151,6 +46,7 @@ ArduinoJson::JsonObject scanWifi()
             scanArray.add(networkObjct);
         }
     scanObject["wifi_networks"] = scanArray;
+    disableWifi();          // disable wifi for power saving
     return(scanObject);
     }
 }
@@ -158,12 +54,7 @@ ArduinoJson::JsonObject scanWifi()
 
 ArduinoJson::JsonObject scanGSM()
 {
-    if (!modem.isGprsConnected()) { SerialMon.println("NOT GPRS connected"); }
-
-    modem.gprsConnect(apn);
-    
-    if (modem.isGprsConnected()) { SerialMon.println("GPRS connected"); }
-    if (!modem.isGprsConnected()) { SerialMon.println("NOT GPRS connected"); }
+    ensureModemGprsConnected();
     DynamicJsonDocument doc(1024);
     DynamicJsonDocument gsmDoc(1024);
 
@@ -193,4 +84,36 @@ ArduinoJson::JsonObject scanGSM()
       delay(15000L);
     }
   }
+}
+
+// ArduinoJson::JsonObject scanTower()
+// {
+//     // char res[];   // need to actually calculate max size and allocate based on that
+//     Serial.println("=====Inquiring UE system information=====");
+//     modem.sendAT("+CPSI?");
+//     if (modem.waitResponse(1000L) == 1) {
+//         String res1 = SerialAT.readString();
+//         // char buf[100];
+//         // String res = Serial1.readStringUntil('\n');
+//         // int rlen = Serial1.readBytesUntil('\n', buf, 100);
+        
+//         // prints the received data
+//         Serial.print("I received: ");
+//         Serial.println(res1);
+//         // for(int i = 0; i < rlen; i++)
+//         //   Serial.print(buf[i]);
+//         }
+//     }
+
+String scanTower()
+{
+    String res;   // need to actually calculate max size and allocate based on that
+    Serial.println("=====Inquiring UE system information=====");
+    modem.sendAT("+CPSI?");
+    if (modem.waitResponse(1000L, res) == 1) {
+        res.replace(GSM_NL "OK" GSM_NL, "");
+        res.replace("+CPSI: ", "");
+        Serial.println(res);
+        return (res);
+    }
 }
