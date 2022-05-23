@@ -1,7 +1,8 @@
 #include "Main.h"
+#include "Utils.h"
+#include "ModemUtils.h"
 #include "WiFi.h"
 #include <EEPROM.h>
-#include "ModemUtils.h"
 #include "ArduinoJson.h"
 #include "driver/adc.h"
 
@@ -25,6 +26,20 @@ void disableWifi()
   WiFi.mode(WIFI_OFF);                        // Switch WiFi off
   delay(1);
   btStop();                                   // Power down BT for best power saving
+}
+
+String getDeviceMac()                         // tries to handle a null mac by ensuring radio on
+{
+  String deviceMac = WiFi.macAddress();
+  if (deviceMac) {
+    return(deviceMac);
+  }
+  else {
+    setupWifi();
+    deviceMac = WiFi.macAddress();
+    disableWifi();
+    return(deviceMac);
+  }
 }
 
 // ------- Power Functions -----
@@ -53,7 +68,7 @@ void enterSleep()
     digitalWrite(LED_PIN, HIGH);
 
     // begin sleep sequence
-    Serial.println("going to sleep for " + String(TIME_TO_SLEEP) + " seconds...");
+    DEBUG_INFORMATION_SERIAL.println("going to sleep for " + String(TIME_TO_SLEEP) + " seconds...");
     esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);
     esp_deep_sleep_start();  
 }
@@ -79,12 +94,13 @@ ArduinoJson::JsonObject getDeviceInfo()
   DynamicJsonDocument deviceDoc(1024);
   ArduinoJson::JsonObject deviceObject = deviceDoc.to<JsonObject>();
 
-  const String deviceMac = WiFi.macAddress();         // MAC to identify device to the server
+  // const String deviceMac = WiFi.macAddress();         // MAC to identify device to the server
   const String deviceModel = "temp";
   const uint16_t batt = measureBatVoltage();
 
-  deviceDoc["device_mac"] = deviceMac;
+  deviceDoc["device_mac"] = getDeviceMac();
   deviceDoc["batt"] = batt;
+  deviceDoc["carrier"] = modem.getOperator();
 
 
   return(deviceObject);

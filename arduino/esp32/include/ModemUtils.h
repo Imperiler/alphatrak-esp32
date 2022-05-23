@@ -6,7 +6,7 @@ void setupModem();
 void modemPowerOff();
 void modemPowerOn();
 void modemRestart();
-void ensureModemNetworkConnected();
+bool ensureModemNetworkConnected();
 void ensureModemGprsConnected();
 
 #endif

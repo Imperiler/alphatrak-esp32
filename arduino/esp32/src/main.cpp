@@ -16,24 +16,40 @@ void setup()
 {
     Serial.begin(115200);                            // initialize serial console
     delay(200);                                      // give board time to init
-    Serial.println("running setup");                 // inform running setup
-    setCpuFrequencyMhz(160);                         //clock cpu down
+    DEBUG_INFORMATION_SERIAL.println(                // inform running setup
+    "========Setup begin========");
 
+    DEBUG_INFORMATION_SERIAL.println(                // inform clock cpu down
+    "========Clock CPU down to " + 
+    String(CPU_MHZ) + "Mhz========");
+ 
+    setCpuFrequencyMhz(CPU_MHZ);                     //clock cpu down
     EEPROM.begin(EEPROM_SIZE);                       // initialize eeprom
 
     setupModem();                                    // make modem ready
 
-    Serial.println("Setup done");
+    DEBUG_INFORMATION_SERIAL.println(
+    "========Setup done========");                   // inform setup complete
 }
 
 
 String serializeTransmission()
 {
-    // consruct json to send to server
+    /** consruct json to send to server **/
     JsonObject transmitData = doc.to<JsonObject>();  // make doc into JSON object
+    DynamicJsonDocument scanDoc(1024);               // init doc for scans
+    DynamicJsonDocument gsmScanObjectDoc(1024);
 
+    JsonObject gsmScanObject = gsmScanObjectDoc.to<JsonObject>();
+    JsonArray scanArray = scanDoc.to<JsonArray>();
+    
+    gsmScanObject["cell_tower"] = scanGSM();         // tower info
     transmitData["device"] = getDeviceInfo();        // device info
-    transmitData["scan_results"] = scanWifi();       // get wifi results
+    
+    scanArray.add(scanWifi());
+    scanArray.add(gsmScanObject);
+    
+    transmitData["scan_results"] = scanArray;       // get wifi results
 
     String requestBody;                              // initialize request body
     serializeJson(doc, requestBody);                 // json serialize result into request body
@@ -42,31 +58,34 @@ String serializeTransmission()
 }
 
 
-int postTransmission()
+int createTransmission()
 {
     String requestBody = serializeTransmission();   
     int httpResponseCode = postData(requestBody);    // post data and store response code
      
-    // Serial.print("HTTP Response code: ");
-    // Serial.println(httpResponseCode);
     if (httpResponseCode == 200) {                   // if we get server okay, clear the document
           doc.clear();
     }
     else {                                           // if we don't get server 200, wait and try re-submit
+          DEBUG_WARNING_SERIAL.println("Transmission failed, trying again");
           delay(10);
-          postData(requestBody);
-          doc.clear();
+          httpResponseCode = postData(requestBody);
+          doc.clear();                               // likely don't need to explicitly clear doc, as it should be deleted once out of scope
+          // print error to serial if failure occured
+          if (!(httpResponseCode == 200)) {DEBUG_ERROR_SERIAL.println(
+             "Error: could not submit transmission data");
+          }
     }
+    return httpResponseCode;
 }
 
 void loop()
 {
-    // scanGSM();
-    postTransmission();                              // gather and post json to server
+    createTransmission();                            // gather and post json to server
 
     Serial.println("trying to get operator...");
-    scanTower();
-    
+    scanGSM();
+
     // go to sleep
     enterSleep();    
 }

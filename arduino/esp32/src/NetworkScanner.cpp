@@ -11,26 +11,26 @@
 ArduinoJson::JsonObject scanWifi()
 {
     setupWifi();
+
     DynamicJsonDocument doc(1024);
     DynamicJsonDocument wifiDoc(1024);
 
-    Serial.println("scan start");
+    DEBUG_INFORMATION_SERIAL.println("scan wifi start");
 
     // WiFi.scanNetworks will return the number of networks found
     int n = WiFi.scanNetworks();
-    Serial.println("scan done");
+    DEBUG_INFORMATION_SERIAL.println("scan done");
     // serialize network info
     ArduinoJson::JsonObject scanObject = wifiDoc.to<JsonObject>();
     ArduinoJson::JsonArray scanArray = doc.to<JsonArray>();    
 
     if (n == 0) {  // if no networks found, inform
-        Serial.println("no networks found");
+        DEBUG_WARNING_SERIAL.println("no networks found");  // warn if no networks found
         return(scanObject);
     } 
     else {  
-        Serial.print(n);
-        Serial.println(" networks found");
-    
+        DEBUG_INFORMATION_SERIAL.print(n);
+        DEBUG_INFORMATION_SERIAL.println(" networks found");
 
         for (int i = 0; i < n; ++i) {
             StaticJsonDocument<400> objectDoc;
@@ -52,7 +52,7 @@ ArduinoJson::JsonObject scanWifi()
 }
 
 
-ArduinoJson::JsonObject scanGSM()
+ArduinoJson::JsonObject scanGSMRoughLocation()
 {
     ensureModemGprsConnected();
     DynamicJsonDocument doc(1024);
@@ -86,34 +86,79 @@ ArduinoJson::JsonObject scanGSM()
   }
 }
 
-// ArduinoJson::JsonObject scanTower()
-// {
-//     // char res[];   // need to actually calculate max size and allocate based on that
-//     Serial.println("=====Inquiring UE system information=====");
-//     modem.sendAT("+CPSI?");
-//     if (modem.waitResponse(1000L) == 1) {
-//         String res1 = SerialAT.readString();
-//         // char buf[100];
-//         // String res = Serial1.readStringUntil('\n');
-//         // int rlen = Serial1.readBytesUntil('\n', buf, 100);
-        
-//         // prints the received data
-//         Serial.print("I received: ");
-//         Serial.println(res1);
-//         // for(int i = 0; i < rlen; i++)
-//         //   Serial.print(buf[i]);
-//         }
-//     }
 
-String scanTower()
+String getGsmInfo()
 {
     String res;   // need to actually calculate max size and allocate based on that
     Serial.println("=====Inquiring UE system information=====");
     modem.sendAT("+CPSI?");
     if (modem.waitResponse(1000L, res) == 1) {
+        DEBUG_INFORMATION_SERIAL.println(res);
+
         res.replace(GSM_NL "OK" GSM_NL, "");
         res.replace("+CPSI: ", "");
-        Serial.println(res);
-        return (res);
+
+        return(res);
     }
+}
+
+
+ArduinoJson::JsonObject scanGSM()
+{
+  String res = getGsmInfo();
+  int str_len = res.length() + 1;
+  char resChar[str_len];
+  res.toCharArray(resChar, str_len);
+  char *saveptr;
+  
+  DEBUG_INFORMATION_SERIAL.print("full string: ");
+  DEBUG_INFORMATION_SERIAL.print(resChar);
+
+  // read all info into vars
+  char  *systemMode       = strtok_r(resChar, ",", &saveptr); 
+  char  *operationMode    = strtok_r(NULL, ",", &saveptr);
+  char  *mcc              = strtok_r(NULL, "-", &saveptr);
+  char  *mnc              = strtok_r(NULL, ",", &saveptr);
+  char  *tac              = strtok_r(NULL, ",", &saveptr);
+  char  *cellId           = strtok_r(NULL, ",", &saveptr);
+  char  *pCellId          = strtok_r(NULL, ",", &saveptr);
+  char  *freqBand         = strtok_r(NULL, ",", &saveptr);
+  char  *earfcn           = strtok_r(NULL, ",", &saveptr);
+  char  *dlbw             = strtok_r(NULL, ",", &saveptr);
+  char  *ulbw             = strtok_r(NULL, ",", &saveptr);
+  char  *rsrq             = strtok_r(NULL, ",", &saveptr);
+  char  *rsrp             = strtok_r(NULL, ",", &saveptr);
+  char  *rssi             = strtok_r(NULL, ",", &saveptr);
+  char  *rssnr            = strtok_r(NULL, ",", &saveptr);
+
+  uint64_t dec_tac = *tac;
+
+
+  DEBUG_INFORMATION_SERIAL.print("systemMode: ");
+  DEBUG_INFORMATION_SERIAL.println(systemMode);
+  DEBUG_INFORMATION_SERIAL.print("operationMode: ");
+  DEBUG_INFORMATION_SERIAL.println(operationMode);
+  DEBUG_INFORMATION_SERIAL.println("mcc: ");
+  DEBUG_INFORMATION_SERIAL.println(mcc);
+  DEBUG_INFORMATION_SERIAL.println("mnc: ");
+  DEBUG_INFORMATION_SERIAL.println(mnc);
+  DEBUG_INFORMATION_SERIAL.println("fixed tac: ");
+  DEBUG_INFORMATION_SERIAL.println(dec_tac);
+
+
+
+
+
+
+  DynamicJsonDocument towerDoc(1024);                       // initialize json doc
+  ArduinoJson::JsonObject towerObject = towerDoc.to<JsonObject>();
+
+  towerObject["cellId"] = cellId;
+  towerObject["locationAreaCode"] = tac;
+  towerObject["mobileCountryCode"] = mcc; 
+  towerObject["mobileNetworkCode"] = mnc;
+  towerObject["signalStrength"] = rssi;
+
+  return(towerObject);
+
 }

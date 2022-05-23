@@ -9,13 +9,13 @@
 int postData(String requestBody)
 {        
     HttpClient http(client, server, port);
-    Serial.println("----------------------SUBMITTING REQUEST-------------------");
+    DEBUG_INFORMATION_SERIAL.println("========Submitting request========");
     ensureModemGprsConnected();
 
     client.connect(server,port);
 
     if (client.connect(server, port)) {
-        Serial.println("connected to server");
+        DEBUG_INFORMATION_SERIAL.println("succesfully connected to server");
         http.beginRequest();                                            // start transmission
         http.post(resource);                                            // specify server location to post to
         // send headers
@@ -29,12 +29,12 @@ int postData(String requestBody)
         // read the status code and body of the response
         int statusCode = http.responseStatusCode();
         String response = http.responseBody();
-        Serial.println(response);
+        DEBUG_INFORMATION_SERIAL.println(response);
         http.stop();
         return (statusCode);
     }
 
     else {
-            Serial.println("I'm in danger lol server not connected");
+        DEBUG_ERROR_SERIAL.println("========json post failed and we're all in danger lol========");
     }
 }

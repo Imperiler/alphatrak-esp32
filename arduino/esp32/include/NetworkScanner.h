@@ -8,7 +8,6 @@ extern TinyGsm modem;
 extern TinyGsmClient client;
 extern const char apn[];
 extern ArduinoJson::JsonObject scanWifi();
-extern ArduinoJson::JsonObject scanGSM();
-String scanTower();
+ArduinoJson::JsonObject scanGSM();
 
 #endif

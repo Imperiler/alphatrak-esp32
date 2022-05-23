@@ -1,6 +1,16 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+// ----------------------------- Debug vars ---------------------------------
+#define DEBUG_ERROR true
+#define DEBUG_ERROR_SERIAL if(DEBUG_ERROR)Serial
+
+#define DEBUG_WARNING true
+#define DEBUG_WARNING_SERIAL if(DEBUG_WARNING)Serial
+
+#define DEBUG_INFORMATION true
+#define DEBUG_INFORMATION_SERIAL if(DEBUG_INFORMATION)Serial
+
 
 // ----------------------------- define serial -----------------------------
 #define SerialMon Serial                          // set debug console to serial monitor
@@ -10,7 +20,7 @@
 #define TINY_GSM_RX_BUFFER        1024            // Set RX buffer to 1Kb
 
 
-// ----------------------------- esp32 pins -----------------------------
+// ----------------------------- esp32 pins ---------------------------------
 #define PWR_PIN                   4
 #define UART_BAUD                 9600
 #define PIN_DTR                   25
@@ -28,10 +38,10 @@
 #define GSM_PIN ""
 
 
-// ----------------------------- time vars -----------------------------
+// ----------------------------- time/power vars -----------------------------
 #define uS_TO_S_FACTOR            1000000         // Conversion factor for micro seconds to seconds
 #define DEFAULT_TIME_TO_SLEEP     30              // Time ESP32 will go to sleep (in miliseconds)
-
+#define CPU_MHZ                   80              // testing will be needed to understand if this is a sufficient CPU rate
 
 // ----------------------------- storage vars -----------------------------
 #define EEPROM_SIZE               1
@@ -45,11 +55,11 @@
 
 // ----------------------------- network vars -----------------------------
 
-const char apn[] = "fast.t-mobile.com";            // APN GSM module setting
+const char apn[] = "fast.t-mobile.com";           // APN GSM module setting
 
-const char server[] = "684026405456.ngrok.io";     // server to connect to
-const char resource[] = "/api/transmission/";      // server location to post to
-const int port = 80;                               // port to connect to
+const char server[] = "684026405456.ngrok.io";    // server to connect to
+const char resource[] = "/api/transmission/";     // server location to post to
+const uint16_t port = 80;                         // port to connect to
 
 
 #endif

@@ -1,17 +1,17 @@
 #include "Main.h"
 
+
 TinyGsm modem(SerialAT);
 TinyGsmClient client(modem);
-
 
 
 // ------- GSM Functions -----
 void modemPowerOn()
 {
   pinMode(PWR_PIN, OUTPUT);
-  digitalWrite(PWR_PIN, LOW);
-  delay(1000); //Datasheet Ton mintues = 1S
   digitalWrite(PWR_PIN, HIGH);
+  delay(1000); //Datasheet Ton mintues = 1S
+//   digitalWrite(PWR_PIN, HIGH);
 }
 
 
@@ -20,7 +20,7 @@ void modemPowerOff()
   pinMode(PWR_PIN, OUTPUT);
   digitalWrite(PWR_PIN, LOW);
   delay(1500); //Datasheet Ton mintues = 1.2S
-  digitalWrite(PWR_PIN, HIGH);
+//   digitalWrite(PWR_PIN, HIGH);
 }
 
 
@@ -32,8 +32,11 @@ void modemRestart()
 }
 
 
-void ensureModemNetworkConnected() {
+bool ensureModemNetworkConnected() {
     bool isConnected = modem.isNetworkConnected();  // current connected status
+    if (isConnected) {
+        return true;
+    }
     if (!isConnected) {
       // Unlock SIM card with a PIN if needed
       if ( GSM_PIN && modem.getSimStatus() != 3 ) {
@@ -134,8 +137,8 @@ void setupModem()
     String modemInfo = modem.getModemInfo();
     Serial.println("Modem Info: " + modemInfo);
 
-
-    ensureModemNetworkConnected();
+    if (!modem.isNetworkConnected())
+      ensureModemNetworkConnected();
  
 
     Serial.println();
@@ -154,13 +157,18 @@ void setupModem()
 
 
 void ensureModemGprsConnected() {
-  if (!modem.isNetworkConnected()) {
-    return;
-  }
+    // if we are already connected, break
+    if (modem.isGprsConnected())
+    { 
+        return;
+    }
 
-  if (!modem.isGprsConnected()) { SerialMon.println("NOT GPRS connected"); }
-    modem.gprsConnect(apn);
-    
-    if (modem.isGprsConnected()) { SerialMon.println("GPRS connected"); }
-    if (!modem.isGprsConnected()) { SerialMon.println("NOT GPRS connected"); }
+    // if not network connected
+    if (!modem.isNetworkConnected())
+    {
+      ensureModemNetworkConnected();
+    }
+
+    if (!modem.isGprsConnected()) {modem.gprsConnect(apn);}
+      
 }
