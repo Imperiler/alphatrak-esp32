@@ -35,29 +35,20 @@ void setup()
 String serializeTransmission()
 {
     /** consruct json to send to server **/
-    JsonObject transmitData = doc.to<JsonObject>();  // make doc into JSON object
-    DynamicJsonDocument scanDoc(1024);               // init doc for scans
-    DynamicJsonDocument gsmScanObjectDoc(1024);
-
-    JsonObject gsmScanObject = gsmScanObjectDoc.to<JsonObject>();
-    JsonArray scanArray = scanDoc.to<JsonArray>();
-    
-
-    /** scan and add wifi objects **/
-    transmitData["device"] = getDeviceInfo();        // device info
-    scanArray.add(scanWifi());
-
+    DynamicJsonDocument transmitData(2048);
+    transmitData["device"]  = getDeviceInfo();  
+    JsonObject scanResultsArray = transmitData.createNestedObject("scan_results");
+    scanResultsArray["wifi_networks"] = scanWifi();
+   
+   
     /** boot GSM modem and scan **/
-    setupModem();                                    // make modem ready
+    setupModem();  
+    scanResultsArray["cell_tower"] = scanGSM();
 
-    gsmScanObject["cell_tower"] = scanGSM();         // tower info
-    scanArray.add(gsmScanObject);
-    
-    transmitData["scan_results"] = scanArray;       // get wifi results
 
     String requestBody;                              // initialize request body
-    serializeJson(doc, requestBody);                 // json serialize result into request body
-    serializeJsonPretty(doc, Serial);
+    serializeJson(transmitData, requestBody);        // json serialize result into request body
+    serializeJsonPretty(transmitData, Serial);
     return (requestBody);
 }
 
