@@ -25,12 +25,15 @@ ArduinoJson::JsonObject scanWifi()
     ArduinoJson::JsonArray scanArray = doc.to<JsonArray>();    
 
     if (n == 0) {  // if no networks found, inform
+        disableWifi();          // disable wifi for power saving
         DEBUG_WARNING_SERIAL.println("no networks found");  // warn if no networks found
         return(scanObject);
     } 
     else {  
         DEBUG_INFORMATION_SERIAL.print(n);
         DEBUG_INFORMATION_SERIAL.println(" networks found");
+        disableWifi();          // disable wifi for power saving
+
 
         for (int i = 0; i < n; ++i) {
             StaticJsonDocument<400> objectDoc;
@@ -46,7 +49,6 @@ ArduinoJson::JsonObject scanWifi()
             scanArray.add(networkObjct);
         }
     scanObject["wifi_networks"] = scanArray;
-    disableWifi();          // disable wifi for power saving
     return(scanObject);
     }
 }

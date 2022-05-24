@@ -26,7 +26,6 @@ void setup()
     setCpuFrequencyMhz(CPU_MHZ);                     //clock cpu down
     EEPROM.begin(EEPROM_SIZE);                       // initialize eeprom
 
-    setupModem();                                    // make modem ready
 
     DEBUG_INFORMATION_SERIAL.println(
     "========Setup done========");                   // inform setup complete
@@ -43,10 +42,15 @@ String serializeTransmission()
     JsonObject gsmScanObject = gsmScanObjectDoc.to<JsonObject>();
     JsonArray scanArray = scanDoc.to<JsonArray>();
     
-    gsmScanObject["cell_tower"] = scanGSM();         // tower info
+
+    /** scan and add wifi objects **/
     transmitData["device"] = getDeviceInfo();        // device info
-    
     scanArray.add(scanWifi());
+
+    /** boot GSM modem and scan **/
+    setupModem();                                    // make modem ready
+
+    gsmScanObject["cell_tower"] = scanGSM();         // tower info
     scanArray.add(gsmScanObject);
     
     transmitData["scan_results"] = scanArray;       // get wifi results
@@ -65,6 +69,7 @@ int createTransmission()
      
     if (httpResponseCode == 200) {                   // if we get server okay, clear the document
           doc.clear();
+          modemPowerOff();
     }
     else {                                           // if we don't get server 200, wait and try re-submit
           DEBUG_WARNING_SERIAL.println("Transmission failed, trying again");
