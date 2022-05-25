@@ -72,10 +72,13 @@ bool ensureModemNetworkConnected() {
         if (isConnected) {
             break;
         }
+        // if we are not connected by this point, we might need to reset
+        else {
+          DEBUG_WARNING_SERIAL.println("warning: could not connect, trying reboot...");
+          ESP.restart();
+        }
     }
   }
-    // Turn on LED when connected
-    digitalWrite(LED_PIN, HIGH);
 }
 
 

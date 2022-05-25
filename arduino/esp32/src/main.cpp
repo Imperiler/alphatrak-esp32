@@ -9,9 +9,6 @@
 #include "ArduinoJson.h"
 
 
-DynamicJsonDocument doc(1024);                       // initialize json doc
-
-
 void setup()
 {
     Serial.begin(115200);                            // initialize serial console
@@ -35,15 +32,26 @@ void setup()
 String serializeTransmission()
 {
     /** consruct json to send to server **/
-    DynamicJsonDocument transmitData(2048);
-    transmitData["device"]  = getDeviceInfo();  
-    JsonObject scanResultsArray = transmitData.createNestedObject("scan_results");
-    scanResultsArray["wifi_networks"] = scanWifi();
-   
-   
+    JsonObject deviceJson = getDeviceInfo();
+    int deviceByes =  JSON_OBJECT_SIZE(deviceJson);
+    
+    JsonObject wifiJson = scanWifi();
+    int wifiBytes = JSON_OBJECT_SIZE(wifiJson);
+    
     /** boot GSM modem and scan **/
     setupModem();  
-    scanResultsArray["cell_tower"] = scanGSM();
+    JsonObject gsmJson = scanGSM();
+    int gsmBytes = JSON_OBJECT_SIZE(gsmBytes);
+
+    int payloadBytes = (deviceByes + wifiBytes + gsmBytes + 100);
+   
+    DynamicJsonDocument transmitData(payloadBytes);
+
+   
+    transmitData["device"]  = deviceJson;
+    JsonObject scanResultsArray = transmitData.createNestedObject("scan_results");
+    scanResultsArray["wifi_networks"] = wifiJson;
+    scanResultsArray["cell_tower"] = gsmJson;
 
 
     String requestBody;                              // initialize request body
@@ -53,20 +61,17 @@ String serializeTransmission()
 }
 
 
-int createTransmission()
+int postTransmission(String requestBody)
 {
-    String requestBody = serializeTransmission();   
     int httpResponseCode = postData(requestBody);    // post data and store response code
      
     if (httpResponseCode == 200) {                   // if we get server okay, clear the document
-          doc.clear();
           modemPowerOff();
     }
     else {                                           // if we don't get server 200, wait and try re-submit
           DEBUG_WARNING_SERIAL.println("Transmission failed, trying again");
           delay(10);
           httpResponseCode = postData(requestBody);
-          doc.clear();                               // likely don't need to explicitly clear doc, as it should be deleted once out of scope
           // print error to serial if failure occured
           if (!(httpResponseCode == 200)) {DEBUG_ERROR_SERIAL.println(
              "Error: could not submit transmission data");
@@ -77,11 +82,6 @@ int createTransmission()
 
 void loop()
 {
-    createTransmission();                            // gather and post json to server
-
-    Serial.println("trying to get operator...");
-    scanGSM();
-
-    // go to sleep
-    enterSleep();    
+    postTransmission(serializeTransmission());       // gather and post json to server
+    enterSleep();                                    // go to sleep
 }
